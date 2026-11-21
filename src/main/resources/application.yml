@@ -20,6 +20,13 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+logging:
+  level:
+    # Hibernate's HHH10001005 "Database info" block (INFO) logs the URL the JDBC driver reports,
+    # and MariaDB Connector/J appends user and password to it. Keep this logger at WARN so the
+    # database password never reaches the log. Guarded by StartupLogSecretsIntegrationTest.
+    org.hibernate.orm.connections.pooling: WARN
+
 management:
   health:
     rabbit:
