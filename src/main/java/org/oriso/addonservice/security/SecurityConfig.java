@@ -39,8 +39,29 @@ public class SecurityConfig {
     return http.build();
   }
 
+  /**
+   * Add-on bundles and their assets. They carry no user data and are loaded with import(),
+   * which cannot send an Authorization header. Add-ons may also ship whole pages (an editor
+   * with a postMessage bridge to the web app, for example), which the web app shows in an
+   * iframe: those may be framed by the web app's own origin, never by another site.
+   */
   @Bean
   @Order(3)
+  SecurityFilterChain addonUi(HttpSecurity http) throws Exception {
+    http.securityMatcher("/addons/*/ui/**")
+        .csrf(csrf -> csrf.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .headers(
+            headers ->
+                headers
+                    .frameOptions(frame -> frame.sameOrigin())
+                    .contentSecurityPolicy(csp -> csp.policyDirectives("frame-ancestors 'self'")))
+        .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll());
+    return http.build();
+  }
+
+  @Bean
+  @Order(4)
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     // Only bearer tokens in the Authorization header are accepted, never cookies,
     // so the double-submit CSRF check of the other services is not needed here.
@@ -52,10 +73,6 @@ public class SecurityConfig {
                     .requestMatchers("/actuator/health/**", "/actuator/health")
                     .permitAll()
                     .requestMatchers("/addons/.well-known/jwks.json")
-                    .permitAll()
-                    // Add-on bundles and their assets carry no user data and are loaded
-                    // with import(), which cannot send an Authorization header.
-                    .requestMatchers("/addons/*/ui/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
