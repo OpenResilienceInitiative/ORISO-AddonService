@@ -157,7 +157,21 @@ class GatewayIntegrationTest {
         .andExpect(header().string("X-Content-Type-Options", "nosniff"))
         .andExpect(header().string("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'"));
     mvc.perform(get("/addons/demo/ui/entry.js"))
-        .andExpect(header().doesNotExist("Content-Security-Policy"));
+        .andExpect(header().string("Content-Security-Policy", "frame-ancestors 'self'"));
+  }
+
+  @Test
+  void letsTheWebAppFrameAddonPagesOnItsOwnOriginOnly() throws Exception {
+    // Add-ons may ship whole pages (e.g. editors with a postMessage bridge to the web app) that
+    // the web app shows in an iframe. Same origin only; everything else stays unframeable.
+    mvc.perform(get("/addons/demo/ui/entry.js"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("X-Frame-Options", "SAMEORIGIN"))
+        .andExpect(header().string("Content-Security-Policy", "frame-ancestors 'self'"));
+    mvc.perform(get("/addons/demo/ui/icons/page.svg"))
+        .andExpect(header().string("X-Frame-Options", "SAMEORIGIN"));
+    mvc.perform(get("/addons/registry").with(user(1, "consultant")))
+        .andExpect(header().string("X-Frame-Options", "DENY"));
   }
 
   @Test
